@@ -176,7 +176,7 @@
                 var fontSize = 8;
 
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, width, height);
+                ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
                 ctx.font = fontSize + 'px Arial';
                 ctx.textBaseline = "middle";
                 ctx.lineCap = 'square'
@@ -192,12 +192,13 @@
                 if (convertedX > 0 && convertedX < width)
                 {
                     var t = threads[Math.floor(convertedX / deltaX)];
-                    ctx.fillStyle = "rgb(255, 255, 255)";
+                    
                     var startY = (t[0].time - startTime) * deltaY + marginTop;
                     var endY = (t[t.length - 1].time - startTime) * deltaY + marginTop;
                     var x = Math.floor(Math.floor(convertedX / deltaX) * deltaX);
-                    ctx.fillRect(x + 10,
-                                 startY, deltaX, endY - startY);
+
+                    ctx.fillStyle = "rgb(255, 255, 255)";
+                    ctx.fillRect(x + 10, startY, deltaX, endY - startY);
                 }
 
 
@@ -219,7 +220,7 @@
                     var isHover = convertedX > x && convertedX < x + deltaX - 1;
                     if (isHover)
                     {
-                        ctx.fillStyle = "#008299";
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
                         ctx.fillRect(x, 0, deltaX - 1, marginTop - 10);
                     }
 
