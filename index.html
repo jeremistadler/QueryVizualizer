@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>MySQL Log Viz</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+
+        <style>
+            body{
+                background-color: rgb(245, 245, 245);
+                margin: 0;
+                padding: 0;
+                height: 100%;
+            }
+            html
+            {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvasWrapper">
+            <canvas id="myCanvas"></canvas>
+        </div>
+
+        <script>
+
+            mouseX = -1;
+            mouseY = -1;
+
+            data = [];
+            threads = [];
+            visibleThreads = [];
+
+            myCanvas = document.getElementById("myCanvas");
+            ctx = myCanvas.getContext("2d");
+
+            width = 200;
+            height = 100;
+
+            startTime = 0;
+            endTime = 1;
+            timeRange = 1;
+
+            deltaY = 1;
+            deltaX = 1;
+
+            marginTop = 40;
+
+            panX = 0;
+            panY = 0;
+            scale = 1;
+            thumbScale = 0.05;
+            isMouseDown = false;
+
+            mouseDownPosX = 0;
+            mouseDownPosY = 0;
+
+            thumbnail = null;
+
+            window.onload = window.onresize = function ()
+            {
+                myCanvas.width = document.body.clientWidth;
+                myCanvas.height = document.body.clientHeight;
+            }
+
+            myCanvas.onmousemove = function(e)
+            {
+                if (isMouseDown && mouseX != -100 && mouseY != -100)
+                {
+                    panX += (e.offsetX - mouseX) / scale;
+                    panY += (e.offsetY - mouseY) / scale;
+
+                    mouseX = e.offsetX;
+                    mouseY = e.offsetY;
+
+                    Draw();
+                }
+                else
+                {
+                    mouseX = e.offsetX;
+                    mouseY = e.offsetY;
+
+                    Draw();
+                }
+            }
+
+            myCanvas.onmousewheel = function(e)
+            {
+                var centerBeforeX = (panX + myCanvas.width / 2) / scale;
+                var centerBeforeY = (panY + myCanvas.height / 2) / scale;
+
+                var preScale = scale;
+
+                if (e.wheelDelta > 0)
+                    scale *= 1.1;
+                else
+                    scale *= 0.9;
+
+                var centerAfterX = (panX + myCanvas.width / 2) / scale;
+                var centerAfterY = (panY + myCanvas.height / 2) / scale;
+
+                panX -= (centerBeforeX - centerAfterX) * preScale;
+                panY -= (centerBeforeY - centerAfterY) * preScale;
+
+                Draw();
+                e.preventDefault();
+            }
+
+            myCanvas.onmousedown = function(e)
+            {
+                if (e.button != 0)
+                    return;
+
+                mouseX = e.offsetX;
+                mouseY = e.offsetY;
+
+                mouseDownPosX = e.offsetX;
+                mouseDownPosY = e.offsetY;
+
+                isMouseDown = true;
+            }
+            myCanvas.oncontextmenu = function(e)
+            {
+                var convertedX = mouseX / scale - panX;
+                if (convertedX > 0 && convertedX < width)
+                {
+                    var x = Math.floor(convertedX / deltaX);
+                    if (visibleThreads[x] > 0)
+                        visibleThreads[x] = 0;
+                    else
+                        visibleThreads[x] = 1;
+                    Draw();
+                    e.preventDefault();
+                    return false;
+                }
+
+                e.preventDefault();
+            }
+
+            myCanvas.onmouseup = function(e)
+            {
+                if (Math.abs(e.offsetX - mouseDownPosX) + Math.abs(e.offsetY - mouseDownPosY) < 4)
+                {
+                    var convertedX = mouseX / scale - panX;
+                    if (convertedX > 0 && convertedX < width)
+                    {
+                        var x = Math.floor(convertedX / deltaX);
+                        if (e.button == 0)
+                        {
+                            if (visibleThreads[x] == 1)
+                                visibleThreads[x] = 2;
+                            else
+                                visibleThreads[x] = 1;
+                            Draw();
+                        }
+                    }
+                }
+
+                if (e.button != 0)
+                    return;
+
+                isMouseDown = false;
+            }
+
+
+            function Draw()
+            {
+                width = threads.length * 300;
+                height = Math.floor(timeRange * 1.5);
+                var fontSize = 8;
+
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, width, height);
+                ctx.font = fontSize + 'px Arial';
+                ctx.textBaseline = "middle";
+                ctx.lineCap = 'square'
+                ctx.scale(scale, scale);
+                ctx.translate(panX, panY);
+                ctx.lineWidth = 1;
+
+                var convertedX = mouseX / scale - panX;
+
+                deltaY = 0.05;
+                deltaX = Math.floor(width / (threads.length + 0));
+
+                if (convertedX > 0 && convertedX < width)
+                {
+                    var t = threads[Math.floor(convertedX / deltaX)];
+                    ctx.fillStyle = "rgb(255, 255, 255)";
+                    var startY = (t[0].time - startTime) * deltaY + marginTop;
+                    var endY = (t[t.length - 1].time - startTime) * deltaY + marginTop;
+                    var x = Math.floor(Math.floor(convertedX / deltaX) * deltaX);
+                    ctx.fillRect(x + 10,
+                                 startY, deltaX, endY - startY);
+                }
+
+
+                for (var t = 0; t < threads.length; t++)
+                {
+                    var x = Math.floor(t * deltaX) + 10;
+
+
+                    if (visibleThreads[t] == 0)
+                        ctx.fillStyle = "rgb(40, 40, 40)";
+                    else if (visibleThreads[t] == 1)
+                        ctx.fillStyle = "rgb(2, 116, 84)";
+                    else
+                        ctx.fillStyle = "rgb(200, 116, 84)";
+
+                    ctx.fillRect(x, 0, deltaX - 1, marginTop - 10);
+
+                    
+                    var isHover = convertedX > x && convertedX < x + deltaX - 1;
+                    if (isHover)
+                    {
+                        ctx.fillStyle = "#008299";
+                        ctx.fillRect(x, 0, deltaX - 1, marginTop - 10);
+                    }
+
+                    if (visibleThreads[t] == 0)
+                        continue;
+
+                    var endY = (threads[t][threads[t].length - 1].time - startTime) * deltaY + marginTop;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x, (threads[t][0].time - startTime) * deltaY + marginTop);
+                    ctx.lineTo(x, endY);
+                    ctx.strokeStyle = "rgb(20, 20, 20)";
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.fillStyle = "rgb(40, 40, 40)";
+
+                    var lastY = -100;
+
+                    for (var i = 0; i < threads[t].length; i++)
+                    {
+                        var item = threads[t][i];
+
+                        var y = (item.time - startTime) * deltaY + marginTop;
+                        var realY = (item.time - startTime) * deltaY + marginTop;
+
+                        if (y < lastY + fontSize)
+                            y = lastY + fontSize;
+
+                        y = Math.floor(y);
+
+                        lastY = y;
+
+                        var pushedX = x + 20;
+
+                        ctx.beginPath();
+                        ctx.moveTo(x, realY);
+                        ctx.lineTo(pushedX, y);
+                        ctx.lineWidth = (1 / scale);
+                        ctx.strokeStyle = GetColor(item.time);
+                        ctx.stroke();
+
+                        ctx.beginPath();
+
+                        var text = item.command_type + ": " + item.argument;
+
+                        if (visibleThreads[t] == 1)
+                            if (ctx.measureText(text).width < deltaX)
+                                ctx.fillText(text, pushedX, y);
+                            else
+                                ctx.fillText(item.command_type, pushedX, y);
+                        else if (visibleThreads[t] == 2)
+                            ctx.fillText(text, pushedX, y);
+                    }
+                }
+
+                if (thumbnail != null)
+                {
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.drawImage(thumbnail, 0, 0);
+
+                    ctx.strokeStyle = "rgba(2, 116, 84, 0.5)";
+                    ctx.fillStyle = "rgba(2, 116, 84, 0.2)";
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+
+                    ctx.rect(-panX * thumbScale,
+                             -panY * thumbScale,
+                             myCanvas.width * thumbScale * scale,
+                             myCanvas.height * thumbScale * scale);
+
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            function GetColor(seed)
+            {
+                seed = Math.floor(seed * 0.01) % 360;
+
+                return "hsl(" + seed + ", 50%, 50%)";
+            }
+
+            function parseThreadList(data)
+            {
+                startTime = data[0].time;
+                endTime = data[data.length - 1].time;
+                timeRange = endTime - startTime;
+
+                var threadsGroup = {};
+                var threadsList = [];
+                var threadCount = 0;
+
+                for (index in data)
+                {
+                    if (!threadsGroup[data[index].thread_id])
+                    {
+                        threadsGroup[data[index].thread_id] = [];
+                        threadCount++;
+                    }
+
+                    threadsGroup[data[index].thread_id].push(data[index]);
+                }
+
+                for (threadId in threadsGroup)
+                {
+                    threadsList.push(threadsGroup[threadId]);
+                    visibleThreads.push(1);
+                }
+
+                threadsList.sort(function (a, b)
+                {
+                    return a[0].time - b[0].time;
+                });
+
+                return threadsList;
+            }
+
+            function CreateThumbnail()
+            {
+                var orginalScale = scale;
+                var orginalPanX = panX;
+                var orginalPanY = panY;
+                var orginalCtx = ctx;
+
+                scale = thumbScale;
+                panX = 0;
+                panY = 0;
+
+                var t = document.createElement("canvas");
+                t.width = Math.ceil(deltaX * (threads.length + 1) * scale);
+                t.height = Math.ceil(deltaY * timeRange * scale) + 10;
+                ctx = t.getContext("2d");
+
+                thumbnail = null;
+
+                Draw();
+
+                thumbnail = t;
+
+                scale = orginalScale;
+                panX = orginalPanX;
+                panY = orginalPanY;
+                ctx = orginalCtx;
+            }
+
+            function reqListener()
+            {
+                data = JSON.parse(this.responseText);
+                threads = parseThreadList(data);
+
+                Draw();
+                CreateThumbnail();
+            };
+
+            var oReq = new XMLHttpRequest();
+            oReq.onload = reqListener;
+            oReq.open("get", "data.json", true);
+            oReq.send();
+
+            
+        </script>
+    </body>
+</html>
