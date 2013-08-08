@@ -10,7 +10,7 @@ Query Visualizer uses MySQL built in log to record all queries, we then take all
 1. Change ConnectionString in app.config
 2. Compile and run
 3. Press enter to start/stop logging
-4. Open http://localhost:8080/ in your browser
+4. Open [http://localhost:8080/](http://localhost:8080/) in your browser
 
 
 
