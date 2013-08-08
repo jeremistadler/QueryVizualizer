@@ -62,6 +62,7 @@
             mouseDownPosY = 0;
 
             thumbnail = null;
+            isDrawingThumbnail = false;
 
             window.onload = window.onresize = function ()
             {
@@ -69,7 +70,7 @@
                 myCanvas.height = document.body.clientHeight;
             }
 
-            myCanvas.onmousemove = function(e)
+            myCanvas.onmousemove = function (e)
             {
                 if (isMouseDown && mouseX != -100 && mouseY != -100)
                 {
@@ -90,7 +91,7 @@
                 }
             }
 
-            myCanvas.onmousewheel = function(e)
+            myCanvas.onmousewheel = function (e)
             {
                 var centerBeforeX = (panX + myCanvas.width / 2) / scale;
                 var centerBeforeY = (panY + myCanvas.height / 2) / scale;
@@ -112,7 +113,7 @@
                 e.preventDefault();
             }
 
-            myCanvas.onmousedown = function(e)
+            myCanvas.onmousedown = function (e)
             {
                 if (e.button != 0)
                     return;
@@ -125,7 +126,7 @@
 
                 isMouseDown = true;
             }
-            myCanvas.oncontextmenu = function(e)
+            myCanvas.oncontextmenu = function (e)
             {
                 var convertedX = mouseX / scale - panX;
                 if (convertedX > 0 && convertedX < width)
@@ -143,7 +144,7 @@
                 e.preventDefault();
             }
 
-            myCanvas.onmouseup = function(e)
+            myCanvas.onmouseup = function (e)
             {
                 if (Math.abs(e.offsetX - mouseDownPosX) + Math.abs(e.offsetY - mouseDownPosY) < 4)
                 {
@@ -173,7 +174,12 @@
             {
                 width = threads.length * 300;
                 height = Math.floor(timeRange * 1.5);
-                var fontSize = 8;
+
+
+                var fontSize = Math.floor((1 / scale) * 120) / 10;
+
+                if (isDrawingThumbnail)
+                    fontSize = 8;
 
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
@@ -192,7 +198,7 @@
                 if (convertedX > 0 && convertedX < width)
                 {
                     var t = threads[Math.floor(convertedX / deltaX)];
-                    
+
                     var startY = (t[0].time - startTime) * deltaY + marginTop;
                     var endY = (t[t.length - 1].time - startTime) * deltaY + marginTop;
                     var x = Math.floor(Math.floor(convertedX / deltaX) * deltaX);
@@ -216,7 +222,7 @@
 
                     ctx.fillRect(x, 0, deltaX - 1, marginTop - 10);
 
-                    
+
                     var isHover = convertedX > x && convertedX < x + deltaX - 1;
                     if (isHover)
                     {
@@ -356,9 +362,11 @@
                 ctx = t.getContext("2d");
 
                 thumbnail = null;
+                isDrawingThumbnail = true;
 
                 Draw();
 
+                isDrawingThumbnail = false;
                 thumbnail = t;
 
                 scale = orginalScale;
@@ -381,7 +389,7 @@
             oReq.open("get", "data.json", true);
             oReq.send();
 
-            
+
         </script>
     </body>
 </html>
