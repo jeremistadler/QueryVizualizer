@@ -65,7 +65,7 @@ namespace QueryVizualizer
 
 				var watch = Stopwatch.StartNew();
 				Console.WriteLine("--- Logging, Press enter to stop---");
-				conn.ExecuteSql("SET GLOBAL general_log_file='TABLE'");
+				conn.ExecuteSql("SET GLOBAL log_output='TABLE'");
 				conn.ExecuteSql("SET GLOBAL general_log='ON'");
 
 				Console.ReadLine();
