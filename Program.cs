@@ -9,6 +9,7 @@ using ServiceStack.Text;
 using HttpServer;
 using System.Configuration;
 using System.Diagnostics;
+using System.Net;
 
 
 
@@ -18,21 +19,28 @@ namespace QueryVizualizer
 	{
 		static void OnRequest(object sender, RequestEventArgs e)
 		{
-			if (e.Request.Uri.OriginalString.Contains("data.json"))
+            var extentions = new[] { ".json", ".js", ".html" };
+            var reqestedFile = e.Request.Uri.AbsolutePath.TrimStart('/');
+
+            if (reqestedFile == "")
+                reqestedFile = "index.html";
+
+            if (extentions.Any(ext => reqestedFile.EndsWith(ext, StringComparison.InvariantCultureIgnoreCase)))
 			{
-				byte[] buffer = File.ReadAllBytes("data.json");
-				e.Response.Body.Write(buffer, 0, buffer.Length);
-			}
-			else
-			{
-				byte[] buffer = File.ReadAllBytes("index.html");
-				e.Response.Body.Write(buffer, 0, buffer.Length);
+                if (File.Exists(reqestedFile))
+                {
+                    byte[] buffer = File.ReadAllBytes(reqestedFile);
+                    e.Response.Body.Write(buffer, 0, buffer.Length);
+                }
+                else
+                    e.Response.Status = System.Net.HttpStatusCode.NotFound;
 			}
 		}
 
 		static void Main(string[] args)
 		{
-			const int Port = 8080;
+            const int Port = 8080;
+            IPAddress address = IPAddress.Any;
 
 
 			if (ConfigurationManager.ConnectionStrings["db"] == null ||
@@ -50,7 +58,7 @@ namespace QueryVizualizer
 			var conn = factory.OpenDbConnection();
 
 			Console.WriteLine("Starting Web Listener on port " + Port);
-			var http = HttpServer.HttpListener.Create(System.Net.IPAddress.Any, Port);
+            var http = HttpServer.HttpListener.Create(address, Port);
 			http.RequestReceived += OnRequest;
 			http.Start(10);
 
